@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "393007953185",
+    "project_id": "pcc-coaching",
+    "storage_bucket": "pcc-coaching.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:393007953185:android:c0024d87098ce5dd973a60",
+        "android_client_info": {
+          "package_name": "com.example.pcc_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ_AmcwPc8pF9LBOrMbv7tSvz2ISbUR2E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
