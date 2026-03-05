@@ -52,8 +52,8 @@ class StudentProvider with ChangeNotifier {
     await fetchStudents();
   }
 
-  Future<void> deleteStudent(String studentId) async {
-    await _api.deleteStudent(studentId);
+  Future<void> deleteStudent(String studentId, {bool deleteFees = false}) async {
+    await _api.deleteStudent(studentId, deleteFees: deleteFees);
     await fetchStudents();
   }
 }

@@ -176,6 +176,25 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
                 Expanded(child: _statCard('Avg Score', '${_averageScore.toStringAsFixed(1)}%', Icons.trending_up, AppColors.success)),
               ],
             ),
+
+          if (widget.enableEdit) ...[
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.delete_forever),
+                label: const Text('Delete Student'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                  foregroundColor: AppColors.error,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppColors.error),
+                ),
+                onPressed: () => _showDeleteConfirmation(context, student),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -570,5 +589,99 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
         ],
       ),
     );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Student student) {
+    bool deleteFees = false;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.cardBg,
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                const SizedBox(width: 8),
+                const Text('Delete Student', style: TextStyle(color: AppColors.error)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Are you sure you want to permanently delete ${student.name}? This action cannot be undone.', style: AppTextStyles.body),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: deleteFees,
+                        onChanged: (val) => setState(() => deleteFees = val ?? false),
+                        activeColor: AppColors.error,
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Also delete all fee & payment ledger records?',
+                          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text('WARNING: If you do not check this box, deletion will fail if the student has payment history due to financial auditing rules.', 
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontStyle: FontStyle.italic)),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  _executeDelete(student, deleteFees);
+                },
+                child: const Text('Delete Permanently'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  Future<void> _executeDelete(Student student, bool deleteFees) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      await Provider.of<StudentProvider>(context, listen: false).deleteStudent(student.studentId, deleteFees: deleteFees);
+      
+      if (!mounted) return;
+      Navigator.pop(context); 
+      Navigator.pop(context); 
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Student deleted successfully'), backgroundColor: AppColors.success),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: AppColors.error, duration: const Duration(seconds: 4)),
+      );
+    }
   }
 }

@@ -7,7 +7,7 @@ class ApiService {
   // TODO: Replace with your actual API URL when deployed
   // Use your machine's LAN IP for physical device, or 10.0.2.2 for Android emulator
   // static const String baseUrl = 'http://localhost:3000/api';
-  static const String baseUrl = 'https://pcc-backend-nhcs.onrender.com/api';
+  static const String baseUrl = 'https://pcc-backend-production-465a.up.railway.app/api';
   
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -77,10 +77,28 @@ class ApiService {
   // Handle response
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return {};
       return json.decode(response.body);
     } else {
-      final error = json.decode(response.body);
+      dynamic error;
+      try {
+        error = json.decode(response.body);
+      } catch (_) {
+        throw Exception('Server error: ${response.statusCode}');
+      }
       throw Exception(error['error'] ?? 'Unknown error occurred');
+    }
+  }
+
+  // Common wrapper to handle missing internet connections
+  Future<http.Response> _executeWithRetry(Future<http.Response> Function() request) async {
+    try {
+      return await request();
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        throw Exception('No Internet Connection. Please check your network and try again.');
+      }
+      rethrow;
     }
   }
 
@@ -109,11 +127,11 @@ class ApiService {
     final body = <String, dynamic>{'username': username, 'password': password};
     if (totpCode != null && totpCode.isNotEmpty) body['totpCode'] = totpCode;
     
-    final response = await http.post(
+    final response = await _executeWithRetry(() => http.post(
       Uri.parse('$baseUrl/auth/admin/login'),
       headers: _getHeaders(),
       body: json.encode(body),
-    );
+    ));
     final data = _handleResponse(response);
     if (data['token'] != null) {
       await saveToken(data['token']);
@@ -124,14 +142,14 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> parentLogin(String username, String password) async {
-    final response = await http.post(
+    final response = await _executeWithRetry(() => http.post(
       Uri.parse('$baseUrl/auth/parent/login'),
       headers: _getHeaders(),
       body: json.encode({
         'username': username,
         'password': password,
       }),
-    );
+    ));
     final data = _handleResponse(response);
     if (data['token'] != null) {
       await saveToken(data['token']);
@@ -144,10 +162,10 @@ class ApiService {
   // ==================== STUDENTS ====================
   
   Future<List<dynamic>> getStudents() async {
-    final response = await http.get(
+    final response = await _executeWithRetry(() => http.get(
       Uri.parse('$baseUrl/students?limit=1000'),
       headers: _getHeaders(),
-    );
+    ));
     final result = _handleResponse(response);
     if (result is Map && result.containsKey('data')) return List<dynamic>.from(result['data']);
     return result;
@@ -179,11 +197,11 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  Future<void> deleteStudent(String studentId) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/students/$studentId'),
+  Future<void> deleteStudent(String studentId, {bool deleteFees = false}) async {
+    final response = await _executeWithRetry(() => http.delete(
+      Uri.parse('$baseUrl/students/$studentId?deleteFees=$deleteFees'),
       headers: _getHeaders(),
-    );
+    ));
     _handleResponse(response);
   }
 
@@ -344,10 +362,10 @@ class ApiService {
   // ==================== FEES ====================
   
   Future<List<dynamic>> getAllFees() async {
-    final response = await http.get(
+    final response = await _executeWithRetry(() => http.get(
       Uri.parse('$baseUrl/fees?limit=1000'),
       headers: _getHeaders(),
-    );
+    ));
     final result = _handleResponse(response);
     if (result is Map && result.containsKey('data')) return List<dynamic>.from(result['data']);
     return result;
@@ -509,74 +527,22 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  // ── Direct Gemini call — no backend server needed ──────────
-  static const String _geminiApiKey = 'AIzaSyBU-2utvMDXM2xBJ7IM-spEVk26kPDdduY';
-
   Future<Map<String, dynamic>> generateMcqQuestions({
     required String className,
     required String subject,
     required String chapter,
   }) async {
-    final prompt =
-        'Act as an expert CBSE Science teacher. Generate exactly 10 Multiple Choice Questions (MCQs) for:\n'
-        'Class: $className\nSubject: $subject\nChapter: $chapter\nBoard: CBSE\n\n'
-        'Return ONLY a valid JSON array of 10 objects. Each object must have:\n'
-        '- "question_number": 1-10\n'
-        '- "question_text": the question\n'
-        '- "option_a": option A\n'
-        '- "option_b": option B\n'
-        '- "option_c": option C\n'
-        '- "option_d": option D\n'
-        '- "correct_answer": exactly one of "A", "B", "C", or "D"\n\n'
-        'Rules:\n'
-        '- Questions should be based on NCERT textbook content\n'
-        '- Mix difficulty levels: 4 Easy, 4 Medium, 2 Hard\n'
-        '- Cover different topics within the chapter\n'
-        '- Return ONLY the JSON array, no markdown or explanations';
-
-    final response = await http.post(
-      Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$_geminiApiKey'),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    final response = await _executeWithRetry(() => http.post(
+      Uri.parse('$baseUrl/mcq-tests/generate'),
+      headers: _getHeaders(),
       body: json.encode({
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt}
-            ]
-          }
-        ],
-        'generationConfig': {
-          'temperature': 0.7,
-        }
+        'class_name': className,
+        'subject': subject,
+        'chapter': chapter,
       }),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Gemini API error: ${response.statusCode}');
-    }
-
-    try {
-      final data = json.decode(response.body);
-      final content = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-
-      var jsonStr = content;
-      final blockMatch = RegExp(r'```(?:json)?\s*(\[[\s\S]*\])\s*```').firstMatch(content);
-      if (blockMatch != null) {
-        jsonStr = blockMatch.group(1)!;
-      } else {
-        final arrayMatch = RegExp(r'\[[\s\S]*\]').firstMatch(content);
-        if (arrayMatch != null) {
-          jsonStr = arrayMatch.group(0)!;
-        }
-      }
-      
-      final questions = json.decode(jsonStr);
-      return {'questions': questions};
-    } catch (e) {
-      throw Exception('Failed to interpret AI response. Please try again.');
-    }
+    ));
+    // The backend endpoint returns `{ questions: [...] }` so we just handle it
+    return _handleResponse(response);
   }
 
   Future<Map<String, dynamic>> submitMcqTest({
