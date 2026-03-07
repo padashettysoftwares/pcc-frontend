@@ -8,10 +8,13 @@ class QuestionPaperPdfService {
   Future<Uint8List> generateQuestionPaperPdf(QuestionPaper paper) async {
     final pdf = pw.Document();
 
-    // Fonts setup for Unicode support (Fixes the tofu symbols for arrows/subscripts)
+    // Fonts: Main + Bold + Italic + full symbol fallback chain
     final mainFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
     final italicFont = await PdfGoogleFonts.notoSansItalic();
+    final mathFont = await PdfGoogleFonts.notoSansMathRegular();
+    final symbolFont = await PdfGoogleFonts.notoSansSymbolsRegular();
+    final symbol2Font = await PdfGoogleFonts.notoSansSymbols2Regular();
     
     final pageTheme = pw.PageTheme(
       pageFormat: PdfPageFormat.a4,
@@ -20,6 +23,7 @@ class QuestionPaperPdfService {
         base: mainFont,
         bold: boldFont,
         italic: italicFont,
+        fontFallback: [mathFont, symbolFont, symbol2Font],
       ),
       buildBackground: (context) {
         return pw.FullPage(
@@ -27,6 +31,25 @@ class QuestionPaperPdfService {
           child: pw.Container(
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: PdfColors.blueGrey800, width: 1.5),
+            ),
+          ),
+        );
+      },
+      buildForeground: (context) {
+        // Non-removable diagonal watermark rendered ON TOP of content
+        return pw.FullPage(
+          ignoreMargins: true,
+          child: pw.Center(
+            child: pw.Transform.rotateBox(
+              angle: -0.5,
+              child: pw.Text(
+                'Padashetty Coaching Class',
+                style: pw.TextStyle(
+                  fontSize: 54,
+                  fontWeight: pw.FontWeight.bold,
+                  color: const PdfColor(0.6, 0.65, 0.7, 0.12),
+                ),
+              ),
             ),
           ),
         );
@@ -353,6 +376,7 @@ class QuestionPaperPdfService {
   }
 
   pw.Widget _buildQuestion(QuestionPaperQuestion q) {
+    final isMcq = q.questionType == 'MCQ' || q.questionType == 'Fill in the Blank' || q.questionType == 'Assertion-Reason';
     final children = <pw.Widget>[];
 
     children.add(
@@ -360,78 +384,54 @@ class QuestionPaperPdfService {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Container(
-            width: 32,
+            width: 26,
             child: pw.Text(
-              'Q${q.questionNumber}.',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.grey900),
+              '${q.questionNumber}.',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: isMcq ? 9.5 : 10.5, color: PdfColors.grey900),
             ),
           ),
           pw.Expanded(
             child: pw.Text(
               q.questionText,
-              style: pw.TextStyle(fontSize: 11, lineSpacing: 1.5, color: PdfColors.grey900),
+              style: pw.TextStyle(fontSize: isMcq ? 9.5 : 10.5, lineSpacing: 1.2, color: PdfColors.grey900),
             ),
           ),
-          pw.SizedBox(width: 8),
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: pw.BoxDecoration(
-              color: PdfColors.grey100,
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(4),
-            ),
-            child: pw.Text(
-              '[${q.marks}]',
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                fontSize: 9,
-                color: PdfColors.grey800,
-              ),
-            ),
+          pw.SizedBox(width: 4),
+          pw.Text(
+            '[${q.marks}]',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5, color: PdfColors.grey700),
           ),
         ],
       ),
     );
 
-    if (q.questionType == 'MCQ' || q.questionType == 'Fill in the Blank') {
-      if (q.optionA != null && q.optionA!.isNotEmpty) {
-        children.add(pw.SizedBox(height: 8));
-        
-        children.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(left: 32),
-            child: pw.Column(
-              children: [
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Expanded(child: _buildOption('A', q.optionA!)),
-                    pw.SizedBox(width: 16),
-                    pw.Expanded(child: _buildOption('B', q.optionB ?? '')),
-                  ],
-                ),
-                pw.SizedBox(height: 8),
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Expanded(child: _buildOption('C', q.optionC ?? '')),
-                    pw.SizedBox(width: 16),
-                    pw.Expanded(child: _buildOption('D', q.optionD ?? '')),
-                  ],
-                ),
-              ],
-            ),
+    if (isMcq && q.optionA != null && q.optionA!.isNotEmpty) {
+      children.add(pw.SizedBox(height: 3));
+      children.add(
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(left: 26),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(child: _buildOption('A', q.optionA!)),
+              pw.SizedBox(width: 8),
+              pw.Expanded(child: _buildOption('B', q.optionB ?? '')),
+              pw.SizedBox(width: 8),
+              pw.Expanded(child: _buildOption('C', q.optionC ?? '')),
+              pw.SizedBox(width: 8),
+              pw.Expanded(child: _buildOption('D', q.optionD ?? '')),
+            ],
           ),
-        );
-      }
+        ),
+      );
     }
 
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 6),
-      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      margin: const pw.EdgeInsets.only(bottom: 2),
+      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 2),
       decoration: const pw.BoxDecoration(
         border: pw.Border(
-          bottom: pw.BorderSide(color: PdfColors.grey200, width: 1, style: pw.BorderStyle.dashed),
+          bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5, style: pw.BorderStyle.dashed),
         ),
       ),
       child: pw.Column(
@@ -446,13 +446,13 @@ class QuestionPaperPdfService {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
-          '($letter)  ',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.blueGrey800),
+          '($letter) ',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5, color: PdfColors.blueGrey800),
         ),
         pw.Expanded(
           child: pw.Text(
             text,
-            style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.5, color: PdfColors.grey800),
+            style: const pw.TextStyle(fontSize: 8.5, lineSpacing: 1.0, color: PdfColors.grey800),
           ),
         ),
       ],

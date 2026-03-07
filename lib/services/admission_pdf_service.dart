@@ -8,12 +8,12 @@ import '../models/student.dart';
 class AdmissionPdfService {
   // ─── Institute Constants ───
   static const String _instituteName = 'PADASHETTY COACHING CLASS';
-  static const String _tagline = 'Excellence in Education Since 2015';
+  static const String _tagline = 'Excellence in Education Since 2009';
   static const String _address =
       'Sangmeshwar Colony, Beside Nisty Hospital, SB Temple Road, Kalaburagi - 585103';
   static const String _phone = 'Ph: +91 9945203603  |  +91 8618075133';
-  static const String _email = 'Email: info@pcc.edu';
-  static const String _website = 'www.pcc.edu';
+  static const String _email = 'Email: padashettycoaching@gmail.com';
+  static const String _website = 'www.padashettycoaching.in';
 
   // ─── Fonts ───
   Future<pw.Font> _baseFont() => PdfGoogleFonts.notoSansRegular();
@@ -816,6 +816,361 @@ class AdmissionPdfService {
             child: pw.Text(text,
                 style: const pw.TextStyle(
                     fontSize: 8, color: PdfColors.grey800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  BLANK ADMISSION FORM PDF (for manual / hardcopy entry)
+  // ═══════════════════════════════════════════════════════════
+  // ── compact term item for blank form ──
+  pw.Widget _compactTermItem(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 1),
+      child: pw.Text(text,
+          style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey800)),
+    );
+  }
+
+  Future<Uint8List> generateBlankAdmissionForm({
+    Uint8List? logoBytes,
+  }) async {
+    final pdf = pw.Document();
+    final base = await _baseFont();
+    final bold = await _boldFont();
+    final italic = await _italicFont();
+
+    // Tighter margins for compact single-page layout
+    final compactTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      theme: pw.ThemeData.withFont(base: base, bold: bold, italic: italic),
+    );
+
+    final pw.ImageProvider? logoImage =
+        logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+
+    final now = DateTime.now();
+    final dateStr =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final academicYear = now.month >= 4
+        ? '${now.year} - ${now.year + 1}'
+        : '${now.year - 1} - ${now.year}';
+
+    pdf.addPage(
+      pw.Page(
+        pageTheme: compactTheme,
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // ── COMPACT HEADER ──
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(_instituteName,
+                            style: pw.TextStyle(
+                                fontSize: 14,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.indigo900,
+                                letterSpacing: 1)),
+                        pw.SizedBox(height: 1),
+                        pw.Text(_address,
+                            style: const pw.TextStyle(
+                                fontSize: 7, color: PdfColors.grey700)),
+                        pw.Text('$_phone  |  $_email',
+                            style: const pw.TextStyle(
+                                fontSize: 7, color: PdfColors.grey700)),
+                      ],
+                    ),
+                  ),
+                  if (logoImage != null)
+                    pw.Container(
+                      width: 36,
+                      height: 36,
+                      child: pw.ClipOval(
+                          child: pw.Image(logoImage,
+                              fit: pw.BoxFit.cover, width: 36, height: 36)),
+                    )
+                  else
+                    pw.Container(
+                      width: 36,
+                      height: 36,
+                      decoration: pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        color: PdfColors.indigo800,
+                      ),
+                      child: pw.Center(
+                        child: pw.Text('PCC',
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                                fontSize: 10)),
+                      ),
+                    ),
+                ],
+              ),
+              pw.SizedBox(height: 3),
+              pw.Container(height: 2, color: PdfColors.indigo900),
+              pw.SizedBox(height: 6),
+
+              // ── COMPACT TITLE + DATE ──
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 4),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.indigo50,
+                      border:
+                          pw.Border.all(color: PdfColors.indigo800, width: 1.5),
+                      borderRadius: pw.BorderRadius.circular(3),
+                    ),
+                    child: pw.Text('ADMISSION FORM  |  $academicYear',
+                        style: pw.TextStyle(
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.indigo900,
+                            letterSpacing: 1.5)),
+                  ),
+                  pw.Text('Date: $dateStr',
+                      style: pw.TextStyle(
+                          fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                ],
+              ),
+              pw.SizedBox(height: 6),
+
+              // ── STUDENT INFORMATION (no photo) ──
+              _sectionTitle('STUDENT INFORMATION'),
+              pw.SizedBox(height: 3),
+              _blankRow('Student Name'),
+              _blankRow('Date of Birth'),
+              _blankRow('Class / Standard'),
+              _blankRow('School Name'),
+              _blankRow('Date of Admission'),
+              pw.SizedBox(height: 5),
+
+              // ── PARENT / GUARDIAN INFORMATION ──
+              _sectionTitle('PARENT / GUARDIAN INFORMATION'),
+              pw.SizedBox(height: 3),
+              _blankRow('Parent / Guardian Name'),
+              _blankRow("Parent's Occupation"),
+              _blankRow('Contact Number'),
+              _blankRow('Alternate Contact'),
+              _blankRow('Email Address'),
+              pw.SizedBox(height: 5),
+
+              // ── ADDRESS ──
+              _sectionTitle('ADDRESS'),
+              pw.SizedBox(height: 3),
+              _blankRow('Residential Address'),
+              _blankRow('City / Taluk'),
+              _blankRow('PIN Code'),
+              pw.SizedBox(height: 5),
+
+              // ── FEE DETAILS ──
+              _sectionTitle('FEE DETAILS'),
+              pw.SizedBox(height: 3),
+              _blankRow('Overall Fees'),
+              _blankRow('Fees Paid'),
+              pw.SizedBox(height: 5),
+
+              // ── TERMS & CONDITIONS (compact) ──
+              _sectionTitle('TERMS & CONDITIONS'),
+              pw.SizedBox(height: 2),
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(5),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey50,
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: pw.BorderRadius.circular(2),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _compactTermItem('1. Student must maintain min 75% attendance.'),
+                    _compactTermItem('2. Fees once paid are non-refundable.'),
+                    _compactTermItem('3. Institute may dismiss student for misconduct.'),
+                    _compactTermItem('4. Parents must attend PTMs when notified.'),
+                    _compactTermItem('5. Property damage cost borne by parent/guardian.'),
+                    _compactTermItem('6. Mobile phones strictly prohibited in class.'),
+                    _compactTermItem('7. Institute not responsible for lost belongings.'),
+                    _compactTermItem('8. Fees must be paid immediately upon notification by the institute.'),
+                    _compactTermItem('9. Schedule/fee structure may be modified.'),
+                    _compactTermItem('10. Signing agrees to all above terms.'),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 4),
+
+              // ── DECLARATION ──
+              pw.Text(
+                'I, the undersigned parent/guardian, declare that the information provided is true and I agree to abide by all the rules and regulations of $_instituteName.',
+                style: pw.TextStyle(
+                    fontSize: 7.5,
+                    fontStyle: pw.FontStyle.italic,
+                    color: PdfColors.grey800),
+              ),
+              pw.SizedBox(height: 4),
+
+              // ── NOTE ──
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(5),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.amber50,
+                  border: pw.Border.all(color: PdfColors.amber800, width: 1),
+                  borderRadius: pw.BorderRadius.circular(3),
+                ),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('\u2605 NOTE: ',
+                        style: pw.TextStyle(
+                            fontSize: 7.5,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.amber900)),
+                    pw.Expanded(
+                      child: pw.Text(
+                        'A soft copy with student login credentials will be sent digitally.',
+                        style: pw.TextStyle(
+                            fontSize: 7.5,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.amber900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.Spacer(),
+
+              // ── SIGNATURES ──
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  // Parent / Guardian signature
+                  pw.Column(
+                    children: [
+                      pw.SizedBox(height: 24),
+                      pw.Container(
+                          width: 150, height: 1, color: PdfColors.grey800),
+                      pw.SizedBox(height: 3),
+                      pw.Text('Parent / Guardian Signature',
+                          style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.grey800)),
+                    ],
+                  ),
+                  // Approved Stamp
+                  pw.Column(
+                    children: [
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 5),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.green50,
+                          border: pw.Border.all(
+                              color: PdfColors.green800, width: 2),
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text('APPROVED',
+                                style: pw.TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.green800,
+                                    letterSpacing: 2)),
+                            pw.SizedBox(height: 1),
+                            pw.Container(
+                                width: 50,
+                                height: 0.8,
+                                color: PdfColors.green600),
+                            pw.SizedBox(height: 1),
+                            pw.Text('PADASHETTY COACHING CLASS',
+                                style: pw.TextStyle(
+                                    fontSize: 5,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.green700,
+                                    letterSpacing: 0.3)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 3),
+                      pw.Text('Tutor / Authorized Signatory',
+                          style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.grey800)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 6),
+
+              // ── FOOTER ──
+              pw.Container(height: 0.8, color: PdfColors.grey400),
+              pw.SizedBox(height: 3),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('$_instituteName  |  $_phone',
+                      style: pw.TextStyle(
+                          fontSize: 6,
+                          color: PdfColors.grey600,
+                          fontWeight: pw.FontWeight.bold)),
+                  pw.Text('For Office Use Only',
+                      style: pw.TextStyle(
+                          fontSize: 6,
+                          color: PdfColors.grey500,
+                          fontStyle: pw.FontStyle.italic)),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+
+  // ── blank row: label + dotted underline for manual entry ──
+  pw.Widget _blankRow(String label) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(
+            width: 150,
+            child: pw.Text('$label :',
+                style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey800)),
+          ),
+          pw.Expanded(
+            child: pw.Container(
+              height: 1,
+              margin: const pw.EdgeInsets.only(bottom: 2),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.grey600, width: 0.8),
+                ),
+              ),
+            ),
           ),
         ],
       ),

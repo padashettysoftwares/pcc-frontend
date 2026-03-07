@@ -1,7 +1,11 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../providers/student_provider.dart';
 import '../../models/student.dart';
+import '../../services/admission_pdf_service.dart';
 import 'add_edit_student_screen.dart';
 import 'student_profile_screen.dart';
 import '../../utils/theme.dart';
@@ -15,6 +19,32 @@ class StudentListScreen extends StatefulWidget {
 
 class _StudentListScreenState extends State<StudentListScreen> {
   String _searchQuery = '';
+
+  Future<void> _printBlankAdmissionForm() async {
+    try {
+      Uint8List? logoBytes;
+      try {
+        final logoData = await rootBundle.load('assets/logo.png');
+        logoBytes = logoData.buffer.asUint8List();
+      } catch (_) {}
+
+      final pdfBytes =
+          await AdmissionPdfService().generateBlankAdmissionForm(
+        logoBytes: logoBytes,
+      );
+
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Blank_Admission_Form_PCC.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating form: $e')),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -34,6 +64,22 @@ class _StudentListScreenState extends State<StudentListScreen> {
         title: const Text('Students'),
         automaticallyImplyLeading: false,
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: IconButton(
+              icon: const Icon(Icons.print_outlined, size: 22),
+              tooltip: 'Print Blank Admission Form',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.cardBg,
+                foregroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: AppColors.border)),
+                fixedSize: const Size(38, 38),
+              ),
+              onPressed: _printBlankAdmissionForm,
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
