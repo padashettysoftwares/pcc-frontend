@@ -6,7 +6,7 @@ import 'notification_service.dart';
 class ApiService {
   // TODO: Replace with your actual API URL when deployed
   // Use your machine's LAN IP for physical device, or 10.0.2.2 for Android emulator
-  // static const String baseUrl = 'http://localhost:3000/api';
+  // static const String baseUrl = 'http://192.168.1.9:3000/api';
   static const String baseUrl = 'https://pcc-backend-production-465a.up.railway.app/api';
   
   final _storage = const FlutterSecureStorage(
@@ -16,10 +16,17 @@ class ApiService {
   String? _role;
   String? _name;
   String? _studentId;
+  int? _instituteId;
+  String? _instituteName;
+  String? _instituteCode;
 
   String? get role => _role;
   String? get name => _name;
   String? get studentId => _studentId;
+  int? get instituteId => _instituteId;
+  String? get instituteName => _instituteName;
+  String? get instituteCode => _instituteCode;
+  String? get token => _token;
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
@@ -32,9 +39,12 @@ class ApiService {
     _role = await _storage.read(key: 'auth_role');
     _name = await _storage.read(key: 'auth_name');
     _studentId = await _storage.read(key: 'auth_student_id');
+    final instId = await _storage.read(key: 'auth_institute_id');
+    _instituteId = instId != null ? int.tryParse(instId) : null;
+    _instituteName = await _storage.read(key: 'auth_institute_name');
+    _instituteCode = await _storage.read(key: 'auth_institute_code');
     
     if (_token != null) {
-      // Background token registration attempt (non-blocking)
       registerDeviceToken().catchError((e) => print("Token sync failed: $e"));
     }
   }
@@ -45,21 +55,29 @@ class ApiService {
     await _storage.write(key: 'auth_token', value: token);
   }
 
-  Future<void> saveAuthData({required String role, String? name, String? studentId}) async {
+  Future<void> saveAuthData({required String role, String? name, String? studentId, int? instituteId, String? instituteName, String? instituteCode}) async {
     _role = role;
     _name = name;
     _studentId = studentId;
+    _instituteId = instituteId;
+    _instituteName = instituteName;
+    _instituteCode = instituteCode;
     await _storage.write(key: 'auth_role', value: role);
     if (name != null) await _storage.write(key: 'auth_name', value: name);
     if (studentId != null) await _storage.write(key: 'auth_student_id', value: studentId);
+    if (instituteId != null) await _storage.write(key: 'auth_institute_id', value: instituteId.toString());
+    if (instituteName != null) await _storage.write(key: 'auth_institute_name', value: instituteName);
+    if (instituteCode != null) await _storage.write(key: 'auth_institute_code', value: instituteCode);
   }
 
-  // Logout — clears token
   Future<void> logout() async {
     _token = null;
     _role = null;
     _name = null;
     _studentId = null;
+    _instituteId = null;
+    _instituteName = null;
+    _instituteCode = null;
     await _storage.deleteAll();
   }
 
@@ -135,7 +153,13 @@ class ApiService {
     final data = _handleResponse(response);
     if (data['token'] != null) {
       await saveToken(data['token']);
-      await saveAuthData(role: data['role'] ?? 'super_admin', name: data['name'] ?? 'Admin');
+      await saveAuthData(
+        role: data['role'] ?? 'super_admin',
+        name: data['name'] ?? 'Admin',
+        instituteId: data['instituteId'] != null ? int.tryParse(data['instituteId'].toString()) : null,
+        instituteName: data['instituteName'] ?? '',
+        instituteCode: data['instituteCode'] ?? '',
+      );
       await registerDeviceToken();
     }
     return data;
@@ -153,7 +177,13 @@ class ApiService {
     final data = _handleResponse(response);
     if (data['token'] != null) {
       await saveToken(data['token']);
-      await saveAuthData(role: 'parent', studentId: data['studentId']);
+      await saveAuthData(
+        role: 'parent',
+        studentId: data['studentId'],
+        instituteId: data['instituteId'] != null ? int.tryParse(data['instituteId'].toString()) : null,
+        instituteName: data['instituteName'] ?? '',
+        instituteCode: data['instituteCode'] ?? '',
+      );
       await registerDeviceToken();
     }
     return data;

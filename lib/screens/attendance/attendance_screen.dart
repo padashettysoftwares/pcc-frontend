@@ -26,8 +26,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_isInit) {
-      Provider.of<StudentProvider>(context, listen: false).fetchStudents();
       _isInit = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Provider.of<StudentProvider>(context, listen: false).fetchStudents();
+        }
+      });
     }
   }
 

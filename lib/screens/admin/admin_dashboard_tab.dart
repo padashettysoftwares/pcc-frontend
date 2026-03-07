@@ -15,6 +15,7 @@ import 'analytics_export_screen.dart';
 import '../../services/api_service.dart';
 import '../login_screen.dart';
 import 'audit_log_screen.dart';
+import 'institute_management_screen.dart';
 
 class AdminDashboardTab extends StatelessWidget {
   final String role;
@@ -57,49 +58,81 @@ class AdminDashboardTab extends StatelessWidget {
                       // ── Top row ──
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Hi, $staffName',
-                                style: GoogleFonts.inter(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hi, $staffName',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      role.replaceAll('_', ' ').toUpperCase(),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        role.replaceAll('_', ' ').toUpperCase(),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    date,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      color: Colors.white.withValues(alpha: 0.65),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        date,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: Colors.white.withValues(alpha: 0.65),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ApiService().instituteName != null && ApiService().instituteName!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.business_rounded, size: 14, color: Colors.white.withValues(alpha: 0.55)),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            ApiService().instituteName!,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.white.withValues(alpha: 0.7),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 12),
                           Row(
                             children: [
                               Container(
@@ -686,6 +719,14 @@ class AdminDashboardTab extends StatelessWidget {
       })));
     }
 
+    // Platform Owner gets Institutes Management
+    if (role == 'platform_owner') {
+      actions.insert(0, const SizedBox(width: 10));
+      actions.insert(0, Expanded(child: _quickAction(context, 'Institutes', Icons.business_rounded, const Color(0xFF34495E), () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const InstituteManagementScreen()));
+      })));
+    }
+
     return Row(children: actions);
   }
 
@@ -711,10 +752,14 @@ class AdminDashboardTab extends StatelessWidget {
               child: Icon(icon, color: color, size: 18),
             ),
             const SizedBox(height: 6),
-            Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: c.textPrimary)),
+            Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: c.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
     );
+  }
+
+  void _snack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }

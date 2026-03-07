@@ -76,7 +76,7 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = ApiService();
-    if (api.role == 'super_admin' || api.role == 'teacher' || api.role == 'front_desk') {
+    if (api.role == 'super_admin' || api.role == 'admin' || api.role == 'teacher' || api.role == 'front_desk' || api.role == 'platform_owner') {
       return AdminShell(role: api.role!, staffName: api.name ?? 'Admin');
     } else if (api.role == 'parent' && api.studentId != null) {
       return ParentShell(studentId: api.studentId!);

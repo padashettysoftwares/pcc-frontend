@@ -34,8 +34,8 @@ class _AdminShellState extends State<AdminShell> {
     items.add(_NavItem(Icons.grid_view_rounded, 'Home',
         AdminDashboardTab(role: role, staffName: widget.staffName)));
 
-    if (role == 'super_admin' || role == 'admin') {
-      // Super Admin: Home, Students, Attend, Tests, Fees, Reports
+    if (role == 'super_admin' || role == 'admin' || role == 'platform_owner') {
+      // Super Admin / Institute Admin / Platform Owner: full access
       items.add(_NavItem(Icons.people_rounded, 'Students', const StudentListScreen()));
       items.add(_NavItem(Icons.check_circle_rounded, 'Attend', const AttendanceScreen()));
       items.add(_NavItem(Icons.assignment_rounded, 'Tests', const TestListScreen()));
