@@ -31,6 +31,8 @@ class NotificationService {
   }
 
   static Future<void> initialize() async {
+    if (kIsWeb) return; // Skip push notifications on web
+    
     // Request permission (required for Android 13+)
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
@@ -76,6 +78,7 @@ class NotificationService {
 
   /// Gets the unique Firebase Cloud Messaging device token
   static Future<String?> getDeviceToken() async {
+    if (kIsWeb) return null; // Skip push notifications on web
     try {
       String? token = await _messaging.getToken();
       if (kDebugMode) {

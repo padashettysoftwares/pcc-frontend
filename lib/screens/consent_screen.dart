@@ -27,17 +27,16 @@ class _ConsentScreenState extends State<ConsentScreen> {
     try {
       final api = ApiService();
       await api.acceptConsent();
-      if (mounted) {
-        widget.onConsentAccepted();
-      }
+      if (!mounted) return;
+      // Reset loading before navigating away, to avoid setState-after-dispose
+      setState(() => _isLoading = false);
+      widget.onConsentAccepted();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 

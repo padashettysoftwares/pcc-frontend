@@ -35,25 +35,6 @@ class QuestionPaperPdfService {
           ),
         );
       },
-      buildForeground: (context) {
-        // Non-removable diagonal watermark rendered ON TOP of content
-        return pw.FullPage(
-          ignoreMargins: true,
-          child: pw.Center(
-            child: pw.Transform.rotateBox(
-              angle: -0.5,
-              child: pw.Text(
-                'Padashetty Coaching Class',
-                style: pw.TextStyle(
-                  fontSize: 54,
-                  fontWeight: pw.FontWeight.bold,
-                  color: const PdfColor(0.6, 0.65, 0.7, 0.12),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
 
     // Group questions by section

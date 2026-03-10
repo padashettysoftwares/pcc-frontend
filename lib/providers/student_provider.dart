@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../models/student.dart';
 import '../services/api_service.dart';
 
@@ -34,7 +35,7 @@ class StudentProvider with ChangeNotifier {
       'admissionDate': student.admissionDate,
       'photoPath': student.photoPath,
       'parentUsername': student.parentUsername ?? 'parent_${student.studentId}',
-      'parentPassword': student.parentPassword ?? 'password123',
+      'parentPassword': student.parentPassword ?? student.parentPhone,
     });
     await fetchStudents();
   }

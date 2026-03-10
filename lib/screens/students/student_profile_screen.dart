@@ -1,11 +1,15 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../models/student.dart';
 import '../../providers/student_provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/test_provider.dart';
+import '../../services/admission_pdf_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/theme.dart';
 import 'add_edit_student_screen.dart';
@@ -34,19 +38,33 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
     _loadStudentStats();
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadStudentStats() async {
+    if (!mounted) return;
     setState(() => _isLoadingStats = true);
-    final attendanceProvider = Provider.of<AttendanceProvider>(context, listen: false);
-    final testProvider = Provider.of<TestProvider>(context, listen: false);
-    final attendance = await attendanceProvider.getStudentAttendancePercentage(widget.student.studentId);
-    final avgScore = await testProvider.getStudentAverageScore(widget.student.studentId);
-    final trend = await testProvider.getStudentPerformanceTrend(widget.student.studentId);
-    setState(() {
-      _attendancePercentage = attendance;
-      _averageScore = avgScore;
-      _performanceTrend = trend;
-      _isLoadingStats = false;
-    });
+    try {
+      final attendanceProvider = Provider.of<AttendanceProvider>(context, listen: false);
+      final testProvider = Provider.of<TestProvider>(context, listen: false);
+      final attendance = await attendanceProvider.getStudentAttendancePercentage(widget.student.studentId);
+      final avgScore = await testProvider.getStudentAverageScore(widget.student.studentId);
+      final trend = await testProvider.getStudentPerformanceTrend(widget.student.studentId);
+      if (!mounted) return;
+      setState(() {
+        _attendancePercentage = attendance;
+        _averageScore = avgScore;
+        _performanceTrend = trend;
+        _isLoadingStats = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingStats = false);
+      debugPrint('Error loading student stats: $e');
+    }
   }
 
   @override
@@ -116,8 +134,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
                 CircleAvatar(
                   radius: 32,
                   backgroundColor: AppColors.primaryLight,
-                  backgroundImage: student.photoPath != null ? FileImage(File(student.photoPath!)) : null,
-                  child: student.photoPath == null
+                  backgroundImage: student.photoPath != null && File(student.photoPath!).existsSync() ? FileImage(File(student.photoPath!)) : null,
+                  child: student.photoPath == null || !File(student.photoPath!).existsSync()
                       ? Text(student.name[0].toUpperCase(),
                           style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 22))
                       : null,
@@ -178,7 +196,41 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
             ),
 
           if (widget.enableEdit) ...[
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            Text('Documents', style: AppTextStyles.subHeading.copyWith(fontSize: 15)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: const Text('Admission Form'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => _generateAdmissionForm(student),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text('Fee Receipt'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF10B981),
+                      side: const BorderSide(color: Color(0xFF10B981)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => _generateFeeReceipt(student),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -198,6 +250,66 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> with Single
         ],
       ),
     );
+  }
+
+  Future<void> _generateAdmissionForm(Student student) async {
+    try {
+      Uint8List? logoBytes;
+      try {
+        final logoData = await rootBundle.load('assets/pcc.png');
+        logoBytes = logoData.buffer.asUint8List();
+      } catch (_) {}
+
+      final pdfBytes = await AdmissionPdfService().generateAdmissionForm(
+        student,
+        logoBytes: logoBytes,
+      );
+
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Admission_${student.name.replaceAll(' ', '_')}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating form: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _generateFeeReceipt(Student student) async {
+    try {
+      Uint8List? logoBytes;
+      try {
+        final logoData = await rootBundle.load('assets/pcc.png');
+        logoBytes = logoData.buffer.asUint8List();
+      } catch (_) {}
+
+      final feeData = await ApiService().getStudentFees(student.studentId);
+      final total = double.tryParse(feeData['total_fees']?.toString() ?? '0') ?? 0;
+      final paid = double.tryParse(feeData['paid_amount']?.toString() ?? '0') ?? 0;
+      final due = double.tryParse(feeData['due_amount']?.toString() ?? '0') ?? 0;
+
+      final pdfBytes = await AdmissionPdfService().generateFeeReceipt(
+        student,
+        totalFees: total,
+        paidAmount: paid,
+        dueAmount: due,
+        logoBytes: logoBytes,
+      );
+
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Fee_Receipt_${student.name.replaceAll(' ', '_')}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating receipt: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   Widget _infoRow(IconData icon, String label, String value) {

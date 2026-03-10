@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import 'admin/admin_shell.dart';
@@ -276,32 +277,77 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 32),
 
                     // ── Footer ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Column(
                       children: [
-                        Container(
-                          width: 4, height: 4,
-                          decoration: const BoxDecoration(
-                            color: _accent,
-                            shape: BoxShape.circle,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 4, height: 4,
+                              decoration: const BoxDecoration(
+                                color: _accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                'SECURE  •  ENCRYPTED  •  PRIVATE',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _textTertiary,
+                                  letterSpacing: 2.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 4, height: 4,
+                              decoration: const BoxDecoration(
+                                color: _accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'SECURE  •  ENCRYPTED  •  PRIVATE',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _textTertiary,
-                            letterSpacing: 2.5,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 4, height: 4,
-                          decoration: const BoxDecoration(
-                            color: _accent,
-                            shape: BoxShape.circle,
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: () async {
+                            final uri = Uri.parse('https://padashettycoaching.in/privacy-policy.html');
+                            try {
+                              // Try in-app first, then external
+                              await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+                            } catch (_) {
+                              try {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } catch (e) {
+                                if (mounted) _snack('Could not open Privacy Policy');
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _accent.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.privacy_tip_outlined, size: 14, color: _accent),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Click here to read our Privacy Policy',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _accent,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
