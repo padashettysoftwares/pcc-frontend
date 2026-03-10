@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'notification_service.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://pcc-backend-production-465a.up.railway.app/api';
+  static const String baseUrl = 'https://api.padashettycoaching.in/api';
   
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
